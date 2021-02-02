@@ -45,6 +45,11 @@ GRUB_CMDLINE_LINUX="crashkernel=auto resume=/dev/mapper/cl-swap rd.lvm.lv=cl/roo
 
 ```
 
+Then regenerate the GRUB Configuration
+```
+grub2-mkconfig -o /boot/grub2/grub.cfg
+```
+
 Next is to configure the server to create the VF's on boot.  The first part is to determine which NIC driver we are using:  
 ```
 [root@localhost ~]# ethtool -i eno1
