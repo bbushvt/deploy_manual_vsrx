@@ -69,7 +69,7 @@ supports-priv-flags: yes
 
 Then we create a udev rule to create the VFs, replacing i40e with the correct driver for your NIC.  This will create 8 VFs
 ```
-echo "ACTION=="add", SUBSYSTEM=="net", ENV{ID_NET_DRIVER}=="i40e", ATTR{device/sriov_numvfs}="8" >> /etc/udev/rules.d/virtual-functions.rules"
+echo 'ACTION=="add", SUBSYSTEM=="net", ENV{ID_NET_DRIVER}=="i40e", ATTR{device/sriov_numvfs}="8"' >> /etc/udev/rules.d/virtual-functions.rules
 ```
 
 
