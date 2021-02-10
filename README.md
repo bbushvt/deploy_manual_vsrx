@@ -1,6 +1,6 @@
 # Deploying the vSRX in IBM Cloud Manually
 This is a process that can be followed to manually deploy a vSRX appliance on IBM Cloud (commerical or government).  
-__This process is not endorced by IBM, use at your own risk__
+__This process is not endorsed by IBM, use at your own risk__
 
 Requirements (Commerical):
 * Gateway appliance deploy using Bring Your Own Gateway (Documentation is for HA)
