@@ -32,7 +32,7 @@ Requirements (Federal):
 Need to ensure that Nested Virtualization is enabled and APICv is disabled.  We'll accomplish this my adding a configuration file for modprobe
 
 ```
-echo "options kvm-intel nested=1 enable_apicv=n" >> /etc/modprobe.d/kvm.conf
+echo "options kvm-intel nested=1 enable_apicv=n pml=n" >> /etc/modprobe.d/kvm.conf
 ```
 
 The following settings will enable Virtual Functions for the network cards.  First, modify /etc/default/grub adding "intel_iommu=on iommu=pt" to the GRUB_CMDLINE_LINUX line
