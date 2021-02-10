@@ -1,3 +1,4 @@
+<!--interface ge-0/0/1 Private Interface -->
 <interface type='hostdev' managed='yes'>
     <source>
         <address type='pci' domain='0x0000' bus='0x18' slot='0x02' function='0x1'/>
