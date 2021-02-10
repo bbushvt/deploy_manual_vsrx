@@ -26,6 +26,9 @@ nmcli con modify $BOND_NAME master $BRIDGE_NAME slave-type bridge
 # Set the static routes
 nmcli con modify $BRIDGE_NAME +ipv4.routes "$STATIC_ROUTE_1 $GW"
 
+# Set the DNS
+nmcli con modify $BRIDGE_NAME ipv4.dns "8.8.8.8"
+
 # Bring up the bridge interface
 nmcli con up $BOND_NAME
 nmcli con up $BRIDGE_NAME

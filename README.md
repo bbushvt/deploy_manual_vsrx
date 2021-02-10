@@ -97,6 +97,129 @@ For this phase we are going to configure eno2 with its public address so additio
      
      ```nmcli con up eno2```
 
-At this point you should be able to reach the internet and resolve DNS names.  Next you should install git and clone this repository to your gateway appliance.
+At this point you should be able to reach the internet and resolve DNS names.  Next you should grab the zip file from github that contains all the scripts and xml files
 
-### 
+```wget https://github.com/bbushvt/deploy_manual_vsrx/archive/main.zip```
+
+Shut down eno2 after the scripts have been downloaded
+
+```nmcli con down eno2```
+
+### Complete the Host Network Config
+
+Upzip the main.zip file that was downloaded above.
+
+```unzip main.zip```
+
+This will create a directory "deploy_manual_vsrx-main" where several scripts are located as well as the interface configuration files for the Network Functions.  Here we need to make some changes to the scrips
+* Edit the configure_public.sh script, replacing the value for IP and GW with the appropriate values obtained from the IBM Cloud Portal
+```
+export IP="169.46.59.69/29"
+export GW="169.46.59.65"
+```
+
+* Edit the configure_private.sh script, replacing the value for IP and GW with the appropriate values obtained from the IBM Cloud Portal
+```
+export IP="10.176.37.198/26"
+export GW="10.176.37.193"
+```
+
+* Make the scripts executable
+
+```
+chmod 755 configure_private.sh
+chmod 755 configure_public.sh
+```
+
+* run each of the scripts 
+```
+./configure_private.sh
+./configure_public.sh
+```
+
+
+
+### Deploy the vSRX
+The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x86-64-20.4R1.12.qcow2' and is located in /root
+* Copy the vSRX image to the default image location
+
+```cp /root/junos-vsrx3-x86-64-20.4R1.12.qcow2 /var/lib/libvirt/images/.```
+
+* Change the ownership of the image file to qemu and the group to kvm
+
+```chown qemu.kvm /var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2```
+
+* Change the permissions on the vSRX image file to 644
+
+```chmod 644 /var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2```
+
+* Install the vSRX image using the following command
+
+```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7 --import```
+
+This will create a virtual machine with 2 cores and 4GB RAM as well as power on the VM.
+
+### Configuring the vSRX Networks
+After the vSRX has been fully deployed (booted to a login prompt), login as root (no password), and shutdown the VM (be sure to do this in the VM and not the host)
+
+```shutdown -h now```
+
+Once the shutdown is complete, power off the vSRX VM.  Using the GUI we are going to modify the existing NIC and add an additionial one.
+
+* Using the Virtual Machine Manager (virt-manager) GUI, open the vSRX VM and click on the configuration icon in the menu bar (light bulb)
+* Select the virst NIC and change the "Network source" to "Bridge private: Host device bond0", then click "Apply"
+* Click on the "Add Hardware" button in the bottom left
+* Select "Network" in the left pane
+* Change "Network source" to "Bridge private: Host device bond0", then click "Finish"
+* Close the virtual machine window
+
+Next, configure the vSRX VM to use the SR-IOV Network Functions we created above.  From the deploy_manual_vsrx-main/interface_config_files directory, run the following commands:
+```
+for x in interface_* ; do virsh attach-device vSRX $x --config; done
+```
+
+
+This should be done on both host systems to configure the networks correctly for both vSRX deployments.  Complete this section before moving on to configuring each vSRX to be part of the cluster
+
+### Configuring cluster mode on the vSRX
+
+Once the Virtual Functions have been assigned, power on the vSRX.  Once booted, login with the root user and no password.  To get into the Juniper CLI, type cli and hit enter.
+
+* Once in the Juniper CLI, configure the root password
+```
+configure
+set system root-authentication plain-text-password
+commit
+exit
+```
+
+* Configure the system to be in cluster mode
+On the first node:
+```
+set chassis cluster cluster-id 1 node 0 reboot
+````
+On the second node:
+```
+set chassis cluster cluster-id 1 node 1 reboot
+````
+Each node will then reboot, when they come back up, login as root, then enter the Juniper CLI by typing cli and hitting enter.
+
+* Configure the fabric interfaces on each node, the reth count, and the cluster redundancy group
+```
+configure
+set interfaces fab0 fabric-options member-interfaces ge-0/0/0
+set interfaces fab0 fabric-options member-interfaces ge-0/0/9
+set interfaces fab1 fabric-options member-interfaces ge-7/0/0
+set interfaces fab1 fabric-options member-interfaces ge-7/0/9
+set chassis cluster reth-count 4
+set chassis cluster redundancy-group 0 node 0 priority 100
+set chassis cluster redundancy-group 0 node 1 priority 1
+set chassis cluster redundancy-group 1 node 0 priority 100
+set chassis cluster redundancy-group 1 node 1 priority 1
+
+commit
+```
+
+
+
+
