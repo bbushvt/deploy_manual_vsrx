@@ -155,7 +155,7 @@ The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x8
 
 * Install the vSRX image using the following command
 
-```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7 --import```
+```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7.0 --import```
 
 This will create a virtual machine with 2 cores and 4GB RAM as well as power on the VM.
 
