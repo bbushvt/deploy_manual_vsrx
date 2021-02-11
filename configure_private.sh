@@ -4,8 +4,9 @@ export BRIDGE_NAME="private"
 export IP="10.176.37.198/26"
 export GW="10.176.37.193"
 export STATIC_ROUTE_1="10.0.0.0/8"
-export STATIC_ROUTE_2="166.9.0.0/16"
+export STATIC_ROUTE_2="100.100.0.0/16"
 export STATIC_ROUTE_3="161.26.0.0/16"
+export STATIC_ROUTE_4="100.96.0.0/11"
 export BOND_NAME="bond0"
 export BOND_OPTIONS="mode=802.3ad"
 export BOND_SLAVE_1="eno1"
@@ -34,6 +35,7 @@ nmcli con modify $BOND_NAME master $BRIDGE_NAME slave-type bridge
 nmcli con modify $BRIDGE_NAME +ipv4.routes "$STATIC_ROUTE_1 $GW"
 nmcli con modify $BRIDGE_NAME +ipv4.routes "$STATIC_ROUTE_2 $GW"
 nmcli con modify $BRIDGE_NAME +ipv4.routes "$STATIC_ROUTE_3 $GW"
+nmcli con modify $BRIDGE_NAME +ipv4.routes "$STATIC_ROUTE_4 $GW"
 
 # Disable multicast-snooping
 nmcli con modify $BRIDGE_NAME bridge.multicast-snooping no

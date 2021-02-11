@@ -160,9 +160,12 @@ The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x8
 This will create a virtual machine with 2 cores and 4GB RAM as well as power on the VM.
 
 ### Configuring the vSRX Networks
-After the vSRX has been fully deployed (booted to a login prompt), login as root (no password), and shutdown the VM (be sure to do this in the VM and not the host)
+After the vSRX has been fully deployed (booted to a login prompt), login as root (no password), enter the Juniper CLI, and power off the VM (be sure to do this in the VM and not the host)
 
-```shutdown -h now```
+```
+cli
+request system power-off
+```
 
 Once the shutdown is complete, power off the vSRX VM.  Using the GUI we are going to modify the existing NIC and add an additionial one.
 
@@ -204,9 +207,12 @@ set chassis cluster cluster-id 1 node 1 reboot
 ````
 Each node will then reboot, when they come back up, login as root, then enter the Juniper CLI by typing cli and hitting enter.
 
-* Configure the fabric interfaces on each node, the reth count, and the cluster redundancy group
+* Connect to the primary node and configure the following.  Note: Change Gateway-Node0 and Gateway-Node1 to site specific identifiers
 ```
-configure
+
+set groups node0 system host-name Gateway-Node0
+set groups node1 system host-name Gateway-Node1
+set apply-groups "${node}"
 set interfaces fab0 fabric-options member-interfaces ge-0/0/0
 set interfaces fab0 fabric-options member-interfaces ge-0/0/9
 set interfaces fab1 fabric-options member-interfaces ge-7/0/0
@@ -216,10 +222,84 @@ set chassis cluster redundancy-group 0 node 0 priority 100
 set chassis cluster redundancy-group 0 node 1 priority 1
 set chassis cluster redundancy-group 1 node 0 priority 100
 set chassis cluster redundancy-group 1 node 1 priority 1
-
-commit
+set chassis cluster redundancy-group 1 preempt
+set chassis cluster redundancy-group 1 interface-monitor ge-0/0/3 weight 130
+set chassis cluster redundancy-group 1 interface-monitor ge-0/0/4 weight 130
+set chassis cluster redundancy-group 1 interface-monitor ge-7/0/3 weight 130
+set chassis cluster redundancy-group 1 interface-monitor ge-7/0/4 weight 130
+set chassis cluster heartbeat-interval 2000
+set chassis cluster heartbeat-threshold 8
+set interfaces ge-0/0/1 gigether-options redundant-parent reth0
+set interfaces ge-0/0/2 gigether-options redundant-parent reth0
+set interfaces ge-0/0/3 gigether-options redundant-parent reth1
+set interfaces ge-0/0/4 gigether-options redundant-parent reth1
+set interfaces ge-0/0/5 gigether-options redundant-parent reth2
+set interfaces ge-0/0/6 gigether-options redundant-parent reth2
+set interfaces ge-0/0/7 gigether-options redundant-parent reth3
+set interfaces ge-0/0/8 gigether-options redundant-parent reth3
+set interfaces ge-7/0/1 gigether-options redundant-parent reth0
+set interfaces ge-7/0/2 gigether-options redundant-parent reth0
+set interfaces ge-7/0/3 gigether-options redundant-parent reth1
+set interfaces ge-7/0/4 gigether-options redundant-parent reth1
+set interfaces ge-7/0/5 gigether-options redundant-parent reth2
+set interfaces ge-7/0/6 gigether-options redundant-parent reth2
+set interfaces ge-7/0/7 gigether-options redundant-parent reth3
+set interfaces ge-7/0/8 gigether-options redundant-parent reth3
+set interfaces lo0 unit 0 family inet address 127.0.0.1/32
+set interfaces reth0 redundant-ether-options redundancy-group 1
+set interfaces reth0 unit 0 description "SL PRIVATE VLAN INTERFACE"
+set interfaces reth1 redundant-ether-options redundancy-group 1
+set interfaces reth1 unit 0 description "SL PUBLIC VLAN INTERFACE"
+set interfaces reth2 vlan-tagging
+set interfaces reth2 redundant-ether-options redundancy-group 1
+set interfaces reth3 vlan-tagging
+set interfaces reth3 redundant-ether-options redundancy-group 1
 ```
 
+* Configure the address book, replace the address for SL_PRIV_MGMT with the private address and SL_PUB_MGMT with the public address
 
+```
+set security address-book global address SL_PRIV_MGMT 100.107.253.5
+set security address-book global address SL_PUB_MGMT 192.255.58.101
+set security address-book global address SL1 10.0.0.0/8
+set security address-book global address SL2 100.100.0.0/16
+set security address-book global address SL3 161.26.0.0/16
+set security address-book global address SL4 100.96.0.0/11
+set security address-book global address-set SERVICE address SL1
+set security address-book global address-set SERVICE address SL2
+set security address-book global address-set SERVICE address SL3
+set security address-book global address-set SERVICE address SL4
+```
 
+* Configure the reth0 and reth1 interfaces, replace the addresses with the correct ones for your deployment
+```
+set interfaces reth0 unit 0 family inet address 100.107.253.5/26
+set interfaces reth1 unit 0 family inet address 192.255.58.101/29
+```
 
+* Configure the security zones for SL_PUBLIC and SL_PRIVATE
+```
+set security policies from-zone SL-PRIVATE to-zone SL-PRIVATE policy Allow_Management match source-address any
+set security policies from-zone SL-PRIVATE to-zone SL-PRIVATE policy Allow_Management match destination-address SL_PRIV_MGMT
+set security policies from-zone SL-PRIVATE to-zone SL-PRIVATE policy Allow_Management match destination-address SERVICE
+set security policies from-zone SL-PRIVATE to-zone SL-PRIVATE policy Allow_Management match application any
+set security policies from-zone SL-PRIVATE to-zone SL-PRIVATE policy Allow_Management then permit
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management match source-address any
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management match destination-address SL_PUB_MGMT
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management match application junos-ssh
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management match application junos-https
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management match application junos-http
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management match application junos-icmp-ping
+set security policies from-zone SL-PUBLIC to-zone SL-PUBLIC policy Allow_Management then permit
+set security zones security-zone SL-PRIVATE interfaces reth0.0 host-inbound-traffic system-services all
+set security zones security-zone SL-PUBLIC interfaces reth1.0 host-inbound-traffic system-services all
+```
+
+* Set the static routes, again replacing the information below with your site specific information
+```
+set routing-options static route 0.0.0.0/0 next-hop 192.255.58.97
+set routing-options static route 10.0.0.0/8 next-hop 100.107.253.1
+set routing-options static route 100.100.0.0/16 next-hop 100.107.253.1
+set routing-options static route 161.26.0.0/16 next-hop 100.107.253.1
+set routing-options static route 100.96.0.0/11 next-hop 100.107.253.1
+```
