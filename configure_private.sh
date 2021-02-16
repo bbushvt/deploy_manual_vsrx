@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
 export BRIDGE_NAME="private"
-export IP="10.176.37.198/26"
-export GW="10.176.37.193"
+export IP="100.107.253.24/26"
+export GW="100.107.253.1"
 export STATIC_ROUTE_1="10.0.0.0/8"
 export STATIC_ROUTE_2="100.100.0.0/16"
 export STATIC_ROUTE_3="161.26.0.0/16"

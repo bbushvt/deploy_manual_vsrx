@@ -155,38 +155,37 @@ The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x8
 
 * Install the vSRX image using the following command
 
-```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7.0 --import```
+```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7.0 --import --network=bridge:private,model=virtio --network=bridge:private,model=virtio --network=bridge:private,model=virtio --network=bridge:private,model=virtio --network=bridge:public,model=virtio --network=bridge:private,model=virtio --network=bridge:public,model=virtio --noautoconsole```
 
 This will create a virtual machine with 2 cores and 4GB RAM as well as power on the VM.
 
-### Configuring the vSRX Networks
-After the vSRX has been fully deployed (booted to a login prompt), login as root (no password), enter the Juniper CLI, and power off the VM (be sure to do this in the VM and not the host)
+### Primary
 
-```
-cli
-request system power-off
-```
+|NIC|ge device | Interface|
+----|----------|-----------
+|1| |fxp0|
+|2| |em0|
+|3|ge-0/0/0|fab0|
+|4|ge-0/0/1|reth0|
+|5|ge-0/0/2|reth1|
+|6|ge-0/0/3|reth2|
+|7|ge-0/0/4|reth3|
 
-Once the shutdown is complete, power off the vSRX VM.  Using the GUI we are going to modify the existing NIC and add an additionial one.
+### Secondary
 
-* Using the Virtual Machine Manager (virt-manager) GUI, open the vSRX VM and click on the configuration icon in the menu bar (light bulb)
-* Select the virst NIC and change the "Network source" to "Bridge private: Host device bond0", then click "Apply"
-* Click on the "Add Hardware" button in the bottom left
-* Select "Network" in the left pane
-* Change "Network source" to "Bridge private: Host device bond0", then click "Finish"
-* Close the virtual machine window
-
-Next, configure the vSRX VM to use the SR-IOV Network Functions we created above.  From the deploy_manual_vsrx-main/interface_config_files directory, run the following commands:
-```
-for x in interface_* ; do virsh attach-device vSRX $x --config; done
-```
-
-
-This should be done on both host systems to configure the networks correctly for both vSRX deployments.  Complete this section before moving on to configuring each vSRX to be part of the cluster
+|NIC|ge device | Interface|
+----|----------|-----------
+|1| |fxp0|
+|2| |em0|
+|3|ge-7/0/0|fab0|
+|4|ge-7/0/1|reth0|
+|5|ge-7/0/2|reth1|
+|6|ge-7/0/3|reth2|
+|7|ge-7/0/4|reth3|
 
 ### Configuring cluster mode on the vSRX
 
-Once the Virtual Functions have been assigned, power on the vSRX.  Once booted, login with the root user and no password.  To get into the Juniper CLI, type cli and hit enter.
+Once booted, login with the root user and no password.  To get into the Juniper CLI, type cli and hit enter.
 
 * Once in the Juniper CLI, configure the root password
 ```
@@ -209,42 +208,29 @@ Each node will then reboot, when they come back up, login as root, then enter th
 
 * Connect to the primary node and configure the following.  Note: Change Gateway-Node0 and Gateway-Node1 to site specific identifiers
 ```
-
 set groups node0 system host-name Gateway-Node0
 set groups node1 system host-name Gateway-Node1
 set apply-groups "${node}"
 set interfaces fab0 fabric-options member-interfaces ge-0/0/0
-set interfaces fab0 fabric-options member-interfaces ge-0/0/9
 set interfaces fab1 fabric-options member-interfaces ge-7/0/0
-set interfaces fab1 fabric-options member-interfaces ge-7/0/9
 set chassis cluster reth-count 4
 set chassis cluster redundancy-group 0 node 0 priority 100
 set chassis cluster redundancy-group 0 node 1 priority 1
 set chassis cluster redundancy-group 1 node 0 priority 100
 set chassis cluster redundancy-group 1 node 1 priority 1
 set chassis cluster redundancy-group 1 preempt
-set chassis cluster redundancy-group 1 interface-monitor ge-0/0/3 weight 130
-set chassis cluster redundancy-group 1 interface-monitor ge-0/0/4 weight 130
-set chassis cluster redundancy-group 1 interface-monitor ge-7/0/3 weight 130
-set chassis cluster redundancy-group 1 interface-monitor ge-7/0/4 weight 130
+set chassis cluster redundancy-group 1 interface-monitor ge-0/0/2 weight 130
+set chassis cluster redundancy-group 1 interface-monitor ge-7/0/2 weight 130
 set chassis cluster heartbeat-interval 2000
 set chassis cluster heartbeat-threshold 8
 set interfaces ge-0/0/1 gigether-options redundant-parent reth0
-set interfaces ge-0/0/2 gigether-options redundant-parent reth0
-set interfaces ge-0/0/3 gigether-options redundant-parent reth1
-set interfaces ge-0/0/4 gigether-options redundant-parent reth1
-set interfaces ge-0/0/5 gigether-options redundant-parent reth2
-set interfaces ge-0/0/6 gigether-options redundant-parent reth2
-set interfaces ge-0/0/7 gigether-options redundant-parent reth3
-set interfaces ge-0/0/8 gigether-options redundant-parent reth3
+set interfaces ge-0/0/2 gigether-options redundant-parent reth1
+set interfaces ge-0/0/3 gigether-options redundant-parent reth2
+set interfaces ge-0/0/4 gigether-options redundant-parent reth3
 set interfaces ge-7/0/1 gigether-options redundant-parent reth0
-set interfaces ge-7/0/2 gigether-options redundant-parent reth0
-set interfaces ge-7/0/3 gigether-options redundant-parent reth1
-set interfaces ge-7/0/4 gigether-options redundant-parent reth1
-set interfaces ge-7/0/5 gigether-options redundant-parent reth2
-set interfaces ge-7/0/6 gigether-options redundant-parent reth2
-set interfaces ge-7/0/7 gigether-options redundant-parent reth3
-set interfaces ge-7/0/8 gigether-options redundant-parent reth3
+set interfaces ge-7/0/2 gigether-options redundant-parent reth1
+set interfaces ge-7/0/3 gigether-options redundant-parent reth2
+set interfaces ge-7/0/4 gigether-options redundant-parent reth3
 set interfaces lo0 unit 0 family inet address 127.0.0.1/32
 set interfaces reth0 redundant-ether-options redundancy-group 1
 set interfaces reth0 unit 0 description "SL PRIVATE VLAN INTERFACE"
