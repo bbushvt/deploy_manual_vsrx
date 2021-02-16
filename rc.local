@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo 7 > /sys/class/net/eno3/device/sriov_numvfs
+echo 7 > /sys/class/net/eno1/device/sriov_numvfs
+echo 7 > /sys/class/net/eno4/device/sriov_numvfs
+echo 7 > /sys/class/net/eno2/device/sriov_numvfs
+/bin/dis_spoofchk_ena_trust.sh
+
+/bin/flow.sh
+/bin/irq.sh
+/usr/bin/at now + 30 minute -f /bin/irq.sh
+/bin/set_huge_pages.sh
+exit 0
