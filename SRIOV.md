@@ -1,5 +1,3 @@
-# This is incomplete at the moment
-
 # Deploying the vSRX in IBM Cloud Manually
 This is a process that can be followed to manually deploy a vSRX appliance on IBM Cloud (commerical or government).  
 __This process is not endorsed by IBM, use at your own risk__
