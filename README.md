@@ -14,7 +14,6 @@ Requirements (Federal):
 * Install Red Hat Based Linux on each of the bare metal servers (RHEL or CentOS)
 * Configure the public network 
 * Clone this git repo to each of the servers so scripts can be used to create the bridge configuration
-* Configure each server for SR-IOV
 * Install KVM dependancies 
 * Deploy the vSRX virtual machine
 * Configure the vSRX VM with the Virtual Function (VF) NICs
@@ -48,28 +47,6 @@ GRUB_CMDLINE_LINUX="crashkernel=auto resume=/dev/mapper/cl-swap rd.lvm.lv=cl/roo
 Then regenerate the GRUB Configuration
 ```
 grub2-mkconfig -o /boot/grub2/grub.cfg
-```
-
-Next is to configure the server to create the VF's on boot.  The first part is to determine which NIC driver we are using:  
-```
-[root@localhost ~]# ethtool -i eno1
-driver: i40e    <- This is the driver
-version: 2.8.20-k
-firmware-version: 7.00 0x80004feb 1.2228.0
-expansion-rom-version:
-bus-info: 0000:18:00.0
-supports-statistics: yes
-supports-test: yes
-supports-eeprom-access: yes
-supports-register-dump: yes
-supports-priv-flags: yes
-[root@localhost ~]#
-
-```
-
-Then we create a udev rule to create the VFs, replacing i40e with the correct driver for your NIC.  This will create 8 VFs
-```
-echo 'ACTION=="add", SUBSYSTEM=="net", ENV{ID_NET_DRIVER}=="i40e", ATTR{device/sriov_numvfs}="8"' >> /etc/udev/rules.d/virtual-functions.rules
 ```
 
 
@@ -136,8 +113,6 @@ chmod 755 configure_public.sh
 ./configure_private.sh
 ./configure_public.sh
 ```
-
-
 
 ### Deploy the vSRX
 The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x86-64-20.4R1.12.qcow2' and is located in /root
@@ -288,4 +263,17 @@ set routing-options static route 10.0.0.0/8 next-hop 100.107.253.1
 set routing-options static route 100.100.0.0/16 next-hop 100.107.253.1
 set routing-options static route 161.26.0.0/16 next-hop 100.107.253.1
 set routing-options static route 100.96.0.0/11 next-hop 100.107.253.1
+```
+
+* Create an admin user
+```
+set system login user admin authentication plain-text-password
+set system login user admin class super-user
+```
+
+* Enable jweb (note, if you want to disable public interface access, don't enable reth1.0)
+```
+set system services web-management https port 8443
+set system services web-management https interface reth1.0
+set system services web-management https interface reth0.0
 ```

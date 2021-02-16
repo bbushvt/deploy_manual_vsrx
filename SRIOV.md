@@ -52,28 +52,6 @@ Then regenerate the GRUB Configuration
 grub2-mkconfig -o /boot/grub2/grub.cfg
 ```
 
-Next is to configure the server to create the VF's on boot.  The first part is to determine which NIC driver we are using:  
-```
-[root@localhost ~]# ethtool -i eno1
-driver: i40e    <- This is the driver
-version: 2.8.20-k
-firmware-version: 7.00 0x80004feb 1.2228.0
-expansion-rom-version:
-bus-info: 0000:18:00.0
-supports-statistics: yes
-supports-test: yes
-supports-eeprom-access: yes
-supports-register-dump: yes
-supports-priv-flags: yes
-[root@localhost ~]#
-
-```
-
-Then we create a udev rule to create the VFs, replacing i40e with the correct driver for your NIC.  This will create 8 VFs
-```
-echo 'ACTION=="add", SUBSYSTEM=="net", ENV{ID_NET_DRIVER}=="i40e", ATTR{device/sriov_numvfs}="8"' >> /etc/udev/rules.d/virtual-functions.rules
-```
-
 
 ### Configure a temporary public network interface 
 There are 4 Physical NICs on these bare metal servers (assuming you provisioned with redundant connections)
@@ -139,6 +117,14 @@ chmod 755 configure_public.sh
 ./configure_public.sh
 ```
 
+### Configure the Virtual Functions
+
+Next we need to install some boot scripts.  There is a install_scripts.sh file that will copy rc.local to /etc, as well as several scripts to the /bin directory.  
+```
+./install_scripts.sh
+```
+
+Once the install script has finished, reboot the server
 
 
 ### Deploy the vSRX
@@ -157,7 +143,7 @@ The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x8
 
 * Install the vSRX image using the following command
 
-```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7.0 --import```
+```virt-install --name vSRX --ram 4096 --cpu Skylake-Server,+vmx, --vcpus=2 --arch=x86_64 --disk path=/var/lib/libvirt/images/junos-vsrx3-x86-64-20.4R1.12.qcow2,size=16,device=disk,bus=ide,format=qcow2 --os-type linux --os-variant rhel7.0 --import --network=bridge:private,model=virtio --network=bridge:private,model=virtio --noautoconsole```
 
 This will create a virtual machine with 2 cores and 4GB RAM as well as power on the VM.
 
@@ -169,19 +155,44 @@ cli
 request system power-off
 ```
 
-Once the shutdown is complete, power off the vSRX VM.  Using the GUI we are going to modify the existing NIC and add an additionial one.
-
-* Using the Virtual Machine Manager (virt-manager) GUI, open the vSRX VM and click on the configuration icon in the menu bar (light bulb)
-* Select the virst NIC and change the "Network source" to "Bridge private: Host device bond0", then click "Apply"
-* Click on the "Add Hardware" button in the bottom left
-* Select "Network" in the left pane
-* Change "Network source" to "Bridge private: Host device bond0", then click "Finish"
-* Close the virtual machine window
-
-Next, configure the vSRX VM to use the SR-IOV Network Functions we created above.  From the deploy_manual_vsrx-main/interface_config_files directory, run the following commands:
+Once the shutdown is complete, power off the vSRX VM.  Next, configure the vSRX VM to use the SR-IOV Network Functions we created above.  From the deploy_manual_vsrx-main/interface_config_files directory, run the following commands:
 ```
 for x in interface_* ; do virsh attach-device vSRX $x --config; done
 ```
+
+### Primary
+
+|NIC|ge device | Interface|
+----|----------|-----------
+|1| |fxp0|
+|2| |em0|
+|3|ge-0/0/0|fab0|
+|4|ge-0/0/1|reth0|
+|5|ge-0/0/2|reth0|
+|6|ge-0/0/3|reth1|
+|7|ge-0/0/4|reth1|
+|8|ge-0/0/5|reth2|
+|9|ge-0/0/6|reth2|
+|10|ge-0/0/7|reth3|
+|11|ge-0/0/8|reth3|
+|12|ge-0/0/9|fab0|
+
+### Secondary
+
+|NIC|ge device | Interface|
+----|----------|-----------
+|1| |fxp0|
+|2| |em0|
+|3|ge-7/0/0|fab0|
+|4|ge-7/0/1|reth0|
+|5|ge-7/0/2|reth0|
+|6|ge-7/0/3|reth1|
+|7|ge-7/0/4|reth1|
+|8|ge-7/0/5|reth2|
+|9|ge-7/0/6|reth2|
+|10|ge-7/0/7|reth3|
+|11|ge-7/0/8|reth3|
+|12|ge-7/0/9|fab0|
 
 
 This should be done on both host systems to configure the networks correctly for both vSRX deployments.  Complete this section before moving on to configuring each vSRX to be part of the cluster
@@ -304,4 +315,17 @@ set routing-options static route 10.0.0.0/8 next-hop 100.107.253.1
 set routing-options static route 100.100.0.0/16 next-hop 100.107.253.1
 set routing-options static route 161.26.0.0/16 next-hop 100.107.253.1
 set routing-options static route 100.96.0.0/11 next-hop 100.107.253.1
+```
+
+* Create an admin user
+```
+set system login user admin authentication plain-text-password
+set system login user admin class super-user
+```
+
+* Enable jweb on https port 8443 (note, if you want to disable public interface access, don't enable reth1.0)
+```
+set system services web-management https port 8443
+set system services web-management https interface reth1.0
+set system services web-management https interface reth0.0
 ```
