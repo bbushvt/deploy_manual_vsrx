@@ -158,6 +158,11 @@ This will create a virtual machine with 2 cores and 4GB RAM as well as power on 
 |6|ge-7/0/3|reth2|
 |7|ge-7/0/4|reth3|
 
+### Set the VM to autostart
+```
+virsh autostart vSRX
+```
+
 ### Configuring cluster mode on the vSRX
 
 Once booted, login with the root user and no password.  To get into the Juniper CLI, type cli and hit enter.

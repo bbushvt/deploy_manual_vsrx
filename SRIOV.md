@@ -145,6 +145,11 @@ The following instructions assume the vSRX qcow2 image is called 'junos-vsrx3-x8
 
 This will create a virtual machine with 2 cores and 4GB RAM as well as power on the VM.
 
+### Set the VM to autostart
+```
+virsh autostart vSRX
+```
+
 ### Configuring the vSRX Networks
 After the vSRX has been fully deployed (booted to a login prompt), login as root (no password), enter the Juniper CLI, and power off the VM (be sure to do this in the VM and not the host)
 

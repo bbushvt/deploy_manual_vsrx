@@ -20,9 +20,9 @@ nmcli con modify $BRIDGE_NAME ipv4.method static ipv4.address $IP ipv6.method ig
 nmcli con add type bond ifname $BOND_NAME con-name $BOND_NAME bond.options $BOND_OPTIONS
 
 # Set the MTU
-nmcli connection modify BOND_NAME 802-3-ethernet.mtu 9100
-nmcli connection modify BOND_SLAVE_1 802-3-ethernet.mtu 9100
-nmcli connection modify BOND_SLAVE_2 802-3-ethernet.mtu 9100
+nmcli connection modify $BOND_NAME 802-3-ethernet.mtu 9100
+nmcli connection modify $BOND_SLAVE_1 802-3-ethernet.mtu 9100
+nmcli connection modify $BOND_SLAVE_2 802-3-ethernet.mtu 9100
 
 # Add the slaves to the Bond
 nmcli con add type ethernet con-name $BOND_NAME-slave-$BOND_SLAVE_1 ifname $BOND_SLAVE_1 master $BOND_NAME
